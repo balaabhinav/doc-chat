@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Upload, File } from 'lucide-react'
-import { Box, Button, VStack, Text, Icon } from '@chakra-ui/react'
+import { Upload, File, CheckCircle, XCircle } from 'lucide-react'
+import { Box, Button, VStack, Text, Icon, Progress, Alert } from '@chakra-ui/react'
+import { useFileUpload } from '../hooks/useFileUpload'
 
 export default function FileUploader() {
     const [isDragging, setIsDragging] = useState(false)
     const [file, setFile] = useState<File | null>(null)
+    const { uploadStatus, uploadProgress, error, uploadFile, resetUpload } = useFileUpload()
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault()
@@ -33,13 +35,31 @@ export default function FileUploader() {
         e.target.value = ''
     }
 
-    const handleFile = (file: File) => {
-        if (file.type === 'application/pdf') {
-            setFile(file)
-            console.log('File selected:', file)
+    const handleFile = async (selectedFile: File) => {
+        if (selectedFile.type === 'application/pdf') {
+            setFile(selectedFile)
+            // Automatically start upload
+            try {
+                await uploadFile(selectedFile)
+            } catch (error) {
+                console.error('Upload failed:', error)
+            }
         } else {
             alert('Please select a PDF file')
         }
+    }
+
+    const handleRemoveFile = () => {
+        setFile(null)
+        resetUpload()
+    }
+
+    const formatBytes = (bytes: number): string => {
+        if (bytes === 0) return '0 Bytes'
+        const k = 1024
+        const sizes = ['Bytes', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
     }
 
     return (
@@ -73,7 +93,7 @@ export default function FileUploader() {
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
             >
-                <VStack gap={4} textAlign="center">
+                <VStack gap={4} textAlign="center" w="100%">
                     <Box
                         p={4}
                         borderRadius="full"
@@ -82,7 +102,15 @@ export default function FileUploader() {
                         border="1px solid"
                         borderColor="gray.200"
                     >
-                        {file ? (
+                        {uploadStatus === 'success' ? (
+                            <Icon boxSize={8} color="green.500">
+                                <CheckCircle />
+                            </Icon>
+                        ) : uploadStatus === 'error' ? (
+                            <Icon boxSize={8} color="red.500">
+                                <XCircle />
+                            </Icon>
+                        ) : file ? (
                             <Icon boxSize={8} color="blue.500">
                                 <File />
                             </Icon>
@@ -93,21 +121,63 @@ export default function FileUploader() {
                         )}
                     </Box>
 
-                    <VStack gap={1}>
+                    <VStack gap={1} w="100%">
                         <Text fontSize="lg" fontWeight="semibold" letterSpacing="tight">
-                            {file ? file.name : "Upload your PDF"}
+                            {uploadStatus === 'success' 
+                                ? 'Upload Complete!' 
+                                : uploadStatus === 'error'
+                                ? 'Upload Failed'
+                                : file 
+                                ? file.name 
+                                : "Upload your PDF"
+                            }
                         </Text>
                         <Text fontSize="sm" color="gray.600">
-                            {file
+                            {uploadStatus === 'uploading' 
+                                ? `Uploading... ${formatBytes(uploadProgress.loaded)} / ${formatBytes(uploadProgress.total)} (${uploadProgress.percentage}%)`
+                                : uploadStatus === 'success'
+                                ? `Successfully uploaded ${formatBytes(file?.size || 0)}`
+                                : file
                                 ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
                                 : "Drag and drop or click to select"
                             }
                         </Text>
                     </VStack>
 
-                    {!file && (
+                    {/* Progress Bar */}
+                    {uploadStatus === 'uploading' && (
+                        <Box w="100%" px={4}>
+                            <Progress.Root 
+                                value={uploadProgress.percentage} 
+                                size="sm"
+                                colorPalette="blue"
+                            >
+                                <Progress.Track>
+                                    <Progress.Range />
+                                </Progress.Track>
+                            </Progress.Root>
+                        </Box>
+                    )}
+
+                    {/* Error Alert */}
+                    {uploadStatus === 'error' && error && (
+                        <Alert.Root status="error" w="100%">
+                            <Alert.Indicator />
+                            <Alert.Title>Error</Alert.Title>
+                            <Alert.Description>{error}</Alert.Description>
+                        </Alert.Root>
+                    )}
+
+                    {!file && uploadStatus === 'idle' && (
                         <label htmlFor="file-input" style={{ cursor: 'pointer' }}>
-                            <Button as="span" variant="outline" mt={2} px={6} py={2} cursor="pointer">
+                            <Button 
+                                as="span" 
+                                variant="outline" 
+                                mt={2} 
+                                px={6} 
+                                py={2} 
+                                cursor="pointer"
+                            >
                                 Select File
                             </Button>
                         </label>
@@ -119,11 +189,19 @@ export default function FileUploader() {
                         style={{ display: 'none' }}
                         onChange={handleFileSelect}
                         accept=".pdf"
+                        disabled={uploadStatus === 'uploading'}
                     />
 
-                    {file && (
-                        <Button onClick={() => setFile(null)} variant="ghost" mt={2} px={6} py={2} colorPalette="red">
-                            Remove File
+                    {file && uploadStatus !== 'uploading' && (
+                        <Button 
+                            onClick={handleRemoveFile} 
+                            variant="ghost" 
+                            mt={2} 
+                            px={6} 
+                            py={2} 
+                            colorPalette="red"
+                        >
+                            {uploadStatus === 'success' ? 'Upload Another' : 'Remove File'}
                         </Button>
                     )}
                 </VStack>
