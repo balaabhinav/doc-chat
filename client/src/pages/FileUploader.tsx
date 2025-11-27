@@ -1,7 +1,13 @@
 import { useState } from 'react'
-import { Upload, File, CheckCircle, XCircle } from 'lucide-react'
-import { Box, Button, VStack, Text, Icon, Progress, Alert } from '@chakra-ui/react'
+import { Box, Button, VStack, Text, Progress, Alert } from '@chakra-ui/react'
 import { useFileUpload } from '../hooks/useFileUpload'
+import {
+    getDisplayIcon,
+    getDisplayTitle,
+    getDisplaySubtitle,
+    getDisplayButtonText,
+    getVisibilityFlags
+} from './FileUploader.helpers'
 
 export default function FileUploader() {
     const [isDragging, setIsDragging] = useState(false)
@@ -54,13 +60,13 @@ export default function FileUploader() {
         resetUpload()
     }
 
-    const formatBytes = (bytes: number): string => {
-        if (bytes === 0) return '0 Bytes'
-        const k = 1024
-        const sizes = ['Bytes', 'KB', 'MB', 'GB']
-        const i = Math.floor(Math.log(bytes) / Math.log(k))
-        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-    }
+    // Compute display values using helper functions
+    const displayState = { uploadStatus, uploadProgress, file, error }
+    const displayIcon = getDisplayIcon(displayState)
+    const displayTitle = getDisplayTitle(displayState)
+    const displaySubtitle = getDisplaySubtitle(displayState)
+    const displayButtonText = getDisplayButtonText(uploadStatus)
+    const { showSelectButton, showRemoveButton, showProgressBar, showErrorAlert } = getVisibilityFlags(displayState)
 
     return (
         <Box
@@ -102,50 +108,20 @@ export default function FileUploader() {
                         border="1px solid"
                         borderColor="gray.200"
                     >
-                        {uploadStatus === 'success' ? (
-                            <Icon boxSize={8} color="green.500">
-                                <CheckCircle />
-                            </Icon>
-                        ) : uploadStatus === 'error' ? (
-                            <Icon boxSize={8} color="red.500">
-                                <XCircle />
-                            </Icon>
-                        ) : file ? (
-                            <Icon boxSize={8} color="blue.500">
-                                <File />
-                            </Icon>
-                        ) : (
-                            <Icon boxSize={8} color="gray.400">
-                                <Upload />
-                            </Icon>
-                        )}
+                        {displayIcon}
                     </Box>
 
                     <VStack gap={1} w="100%">
                         <Text fontSize="lg" fontWeight="semibold" letterSpacing="tight">
-                            {uploadStatus === 'success' 
-                                ? 'Upload Complete!' 
-                                : uploadStatus === 'error'
-                                ? 'Upload Failed'
-                                : file 
-                                ? file.name 
-                                : "Upload your PDF"
-                            }
+                            {displayTitle}
                         </Text>
                         <Text fontSize="sm" color="gray.600">
-                            {uploadStatus === 'uploading' 
-                                ? `Uploading... ${formatBytes(uploadProgress.loaded)} / ${formatBytes(uploadProgress.total)} (${uploadProgress.percentage}%)`
-                                : uploadStatus === 'success'
-                                ? `Successfully uploaded ${formatBytes(file?.size || 0)}`
-                                : file
-                                ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
-                                : "Drag and drop or click to select"
-                            }
+                            {displaySubtitle}
                         </Text>
                     </VStack>
 
                     {/* Progress Bar */}
-                    {uploadStatus === 'uploading' && (
+                    {showProgressBar && (
                         <Box w="100%" px={4}>
                             <Progress.Root 
                                 value={uploadProgress.percentage} 
@@ -160,7 +136,7 @@ export default function FileUploader() {
                     )}
 
                     {/* Error Alert */}
-                    {uploadStatus === 'error' && error && (
+                    {showErrorAlert && (
                         <Alert.Root status="error" w="100%">
                             <Alert.Indicator />
                             <Alert.Title>Error</Alert.Title>
@@ -168,7 +144,7 @@ export default function FileUploader() {
                         </Alert.Root>
                     )}
 
-                    {!file && uploadStatus === 'idle' && (
+                    {showSelectButton && (
                         <label htmlFor="file-input" style={{ cursor: 'pointer' }}>
                             <Button 
                                 as="span" 
@@ -192,7 +168,7 @@ export default function FileUploader() {
                         disabled={uploadStatus === 'uploading'}
                     />
 
-                    {file && uploadStatus !== 'uploading' && (
+                    {showRemoveButton && (
                         <Button 
                             onClick={handleRemoveFile} 
                             variant="ghost" 
@@ -201,7 +177,7 @@ export default function FileUploader() {
                             py={2} 
                             colorPalette="red"
                         >
-                            {uploadStatus === 'success' ? 'Upload Another' : 'Remove File'}
+                            {displayButtonText}
                         </Button>
                     )}
                 </VStack>
