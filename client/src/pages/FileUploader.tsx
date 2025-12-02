@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Box, Button, VStack, Text, Progress, Alert } from '@chakra-ui/react'
 import { useFileUpload } from '../hooks/useFileUpload'
+import { toaster } from '@/components/ui/toaster'
 import {
     getDisplayIcon,
     getDisplayTitle,
@@ -59,6 +60,18 @@ export default function FileUploader() {
         setFile(null)
         resetUpload()
     }
+
+    // Show success toast when file is uploaded successfully
+    useEffect(() => {
+        if (uploadStatus === 'success' && file) {
+            toaster.create({
+                title: 'Upload Successful',
+                description: `${file.name} has been uploaded successfully`,
+                type: 'success',
+                duration: 5000,
+            })
+        }
+    }, [uploadStatus, file])
 
     // Compute display values using helper functions
     const displayState = { uploadStatus, uploadProgress, file, error }
