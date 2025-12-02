@@ -68,6 +68,9 @@ typings/
 # Yarn Integrity file
 .yarn-integrity
 
+# Prisma local database
+prisma/dev.db
+
 # dotenv environment variables file
 .env
 .env.test
@@ -117,3 +120,6 @@ dist
 .pnp.*
 
 /src/generated/prisma
+
+# Uploaded files directory (local development)
+uploaded_files/
