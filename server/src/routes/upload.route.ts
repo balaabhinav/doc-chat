@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { uploadSingle, handleUploadError } from '../middlewares/upload.middleware';
 import * as fileUploadService from '../services/upload/FileUploadService';
+import { getQueueService } from '../services/queue/QueueService';
 
 const router = Router();
+const queueService = getQueueService();
 
 /**
  * POST /api/upload
@@ -25,6 +27,11 @@ router.post(
       // Upload file and save to database
       const savedFile = await fileUploadService.uploadFile(req.file);
 
+      // Create queue entry for processing
+      const queueEntry = await queueService.createQueueEntry(savedFile.id);
+
+      console.log(`[Upload] File uploaded and queued for processing: ${savedFile.id}`);
+
       // Return success response
       return res.status(201).json({
         id: savedFile.id,
@@ -33,6 +40,8 @@ router.post(
         size: savedFile.size,
         mimeType: savedFile.mimeType,
         createdAt: savedFile.createdAt,
+        queueId: queueEntry.id,
+        queueStatus: queueEntry.status,
       });
     } catch (error) {
       console.error('Upload error:', error);

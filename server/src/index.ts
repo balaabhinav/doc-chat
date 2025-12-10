@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import uploadRoute from './routes/upload.route';
 import fileRoute from './routes/file.route';
+import queueRoute from './routes/queue.route';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ if (process.env.NODE_ENV !== 'production') {
 // API routes
 app.use('/api/upload', uploadRoute);
 app.use('/api/files', fileRoute);
+app.use('/api/queue', queueRoute);
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Doc-Chat Server is running');
