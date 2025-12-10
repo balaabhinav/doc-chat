@@ -18,6 +18,23 @@ model File {
   mimeType  String
   createdAt DateTime @default(now())
   queue     Queue?
+  chunks    Chunk[]
+}
+
+model Chunk {
+  id            String   @id @default(uuid())
+  fileId        String
+  file          File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  chunkIndex    Int
+  text          String
+  pageNumber    Int?
+  chunkStrategy String
+  startChar     Int?
+  endChar       Int?
+  createdAt     DateTime @default(now())
+  
+  @@unique([fileId, chunkIndex])
+  @@index([fileId])
 }
 
 model Queue {

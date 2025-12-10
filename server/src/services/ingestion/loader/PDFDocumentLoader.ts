@@ -1,0 +1,64 @@
+import * as fs from 'fs';
+import { PDFParse } from 'pdf-parse';
+import { IDocumentLoader } from './IDocumentLoader';
+import { LoadedDocument } from '../../../types/ingestion.types';
+
+/**
+ * Document loader for PDF files
+ * Uses pdf-parse library to extract text from PDFs
+ */
+export class PDFDocumentLoader implements IDocumentLoader {
+  private readonly supportedMimeTypes = [
+    'application/pdf',
+  ];
+
+  /**
+   * Load and parse a PDF document
+   * @param filePath - Path to the PDF file
+   * @returns Promise<LoadedDocument> - The loaded document with text and metadata
+   */
+  async load(filePath: string): Promise<LoadedDocument> {
+    const dataBuffer = fs.readFileSync(filePath);
+    const parser = new PDFParse({ data: dataBuffer });
+
+    try {
+      const [textResult, infoResult] = await Promise.all([
+        parser.getText(),
+        parser.getInfo(),
+      ]);
+
+      return {
+        text: textResult.text,
+        metadata: {
+          fileName: filePath.split('/').pop() || 'unknown',
+          mimeType: 'application/pdf',
+          pageCount: infoResult.total,
+          info: infoResult.info,
+          metadata: infoResult.metadata,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to load PDF document: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    } finally {
+      await parser.destroy();
+    }
+  }
+
+  /**
+   * Check if this loader supports the given MIME type
+   * @param mimeType - MIME type to check
+   * @returns boolean - True if this loader can handle the MIME type
+   */
+  supports(mimeType: string): boolean {
+    return this.supportedMimeTypes.includes(mimeType);
+  }
+}
+
+/**
+ * Factory function to create a PDF document loader
+ */
+export const createPDFDocumentLoader = (): PDFDocumentLoader => {
+  return new PDFDocumentLoader();
+};
