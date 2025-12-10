@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import { IDocumentLoader } from './IDocumentLoader';
 import { LoadedDocument } from '../../../types/ingestion.types';
 
@@ -18,28 +18,31 @@ export class PDFDocumentLoader implements IDocumentLoader {
    * @returns Promise<LoadedDocument> - The loaded document with text and metadata
    */
   async load(filePath: string): Promise<LoadedDocument> {
+    const dataBuffer = fs.readFileSync(filePath);
+    const parser = new PDFParse({ data: dataBuffer });
+
     try {
-      // Read the PDF file
-      const dataBuffer = fs.readFileSync(filePath);
+      const [textResult, infoResult] = await Promise.all([
+        parser.getText(),
+        parser.getInfo(),
+      ]);
 
-      // Parse the PDF
-      const pdfData = await pdfParse(dataBuffer);
-
-      // Extract text and metadata
       return {
-        text: pdfData.text,
+        text: textResult.text,
         metadata: {
           fileName: filePath.split('/').pop() || 'unknown',
           mimeType: 'application/pdf',
-          pageCount: pdfData.numpages,
-          info: pdfData.info,
-          version: pdfData.version,
+          pageCount: infoResult.total,
+          info: infoResult.info,
+          metadata: infoResult.metadata,
         },
       };
     } catch (error) {
       throw new Error(
         `Failed to load PDF document: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
+    } finally {
+      await parser.destroy();
     }
   }
 
